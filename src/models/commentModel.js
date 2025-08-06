@@ -15,7 +15,15 @@ const commentSchema=new mongoose.Schema(
         content:{
             type:String,
             required:true,
-        }
+            trim: true,
+        },
+        likes: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'user',
+  }
+]
+
     },
     {
         timestamps:{createdAt:true,updatedAt:false}

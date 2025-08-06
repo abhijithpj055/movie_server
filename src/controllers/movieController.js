@@ -16,17 +16,27 @@ const getMovieById = async (req, res) => {
 };
 
 const createMovie = async (req, res) => {
-  const { title, description, image, release_date } = req.body;
+  try {
+const { title, description, image, release_date,director,actors,language } = req.body;
   const movie = new Movie({
     title,
     description,
     image,
     release_date,
+    director,
+    actors,
+    language,
     createdBy: req.user._id
   });
 
   const createdMovie = await movie.save();
   res.status(201).json(createdMovie);
+  } catch (error) {
+     res.status(500).json({
+      message: 'Failed to create movie',
+      error: error.message
+    });
+  }
 };
 
 const updateMovie = async (req, res) => {

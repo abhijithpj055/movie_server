@@ -16,7 +16,7 @@ const ratingSchema=new mongoose.Schema(
             type:Number,
             require:true,
             min:0,
-            max:10
+            max:5
         }
     },
     {
