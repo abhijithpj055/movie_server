@@ -37,6 +37,7 @@ const admin = (req, res, next) => {
    console.log(" Checking admin for user:", req.user?.email, "Role:", req.user?.role);
   if (req.user && req.user.role==='admin') {
        console.log(" Admin access granted");
+  
     next();
   } else {
         console.log(" Admin access denied");
