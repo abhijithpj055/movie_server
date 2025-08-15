@@ -12,6 +12,8 @@ const ratingRoutes = require('./src/routes/ratingRoutes.js')
 const actorRoutes = require('./src/routes/actorRoutes.js');
 const directorRoutes = require('./src/routes/directorRouter.js');
 const languageRoutes = require('./src/routes/languageRoutes.js');
+const uploadRoutes = require('./src/routes/upload.js');
+
 const dbConnectionLink=process.env.DB_CONNECTION_LINK
 
 mongoose.connect(dbConnectionLink,{
@@ -42,6 +44,8 @@ app.use('/api/movies', ratingRoutes);
 app.use('/api/actors', actorRoutes);
 app.use('/api/directors', directorRoutes);
 app.use('/api/languages', languageRoutes);
+app.use('/api', uploadRoutes);
+
 
 
 app.listen(port,()=>{
