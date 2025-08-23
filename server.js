@@ -26,7 +26,11 @@ mongoose.connect(dbConnectionLink,{
 })
 const port=process.env.PORT
 app.use(cors({
-  origin: process.env.CLIENT_URL, 
+   
+   origin: [
+      "http://localhost:5173",       // local frontend
+    process.env.CLIENT_URL,// deployed frontend
+    ],
   credentials: true 
 }));
 app.use(cookieParser())

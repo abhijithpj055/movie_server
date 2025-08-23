@@ -1,30 +1,50 @@
 const userModel = require("../models/userModel")
-const reviewModel =require('../models/reviewModel')
+const reviewModel = require('../models/reviewModel')
 const bcrypt = require('bcrypt')
 
 var jwt = require('jsonwebtoken');
 
-const saltRounds = Number( process.env.SALT_ROUNDS)
-const JWT_SECRET=process.env.JWT_SECRET
+const saltRounds = Number(process.env.SALT_ROUNDS)
+const JWT_SECRET = process.env.JWT_SECRET
 
 const registerController = async (req, res) => {
-    const { email, password, profile_pic } = req.body
+  const { name, email, password, profile_pic,role } = req.body
 
-    const user = await userModel.findOne({ email })
-    if (user) {
-        res.status(400).json({ message: "User with this Email ID already exists" })
-    } else {
-        bcrypt.hash(password, saltRounds,async function (err, hash) {
-            if (hash) {
-                const newUser = await userModel.create({
-                    email, password:hash, profile_pic
-                })
-                res.json({message:"User registered successfully"})
-            }else{
-                res.status(400).json({message:"Password is required."})
-            }
+  const user = await userModel.findOne({ email })
+  if (user) {
+    res.status(400).json({ message: "User with this Email ID already exists" })
+  } else {
+    bcrypt.hash(password, saltRounds, async function (err, hash) {
+      if (hash) {
+        const newUser = await userModel.create({
+          name, email, password: hash, profile_pic, role:role || "user",
         })
-    }
+        const tokenPayload = { id: newUser._id.toString(), email: newUser.email };
+        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "1d" });
+
+        // set cookie (same as login)
+        res.cookie("token", token, {
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+          sameSite: "None",
+          secure: true,
+        });
+        res.status(201).json({
+          message: "User registered successfully",
+          user: {
+            id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role,
+            token
+          }
+        });
+
+      } else {
+        res.status(400).json({ message: "Password is required." })
+      }
+    })
+  }
 }
 
 
@@ -55,7 +75,7 @@ const loginController = async (req, res) => {
     console.log("User found. ID:", user._id);
 
     const tokenPayload = {
-      id: user._id.toString(),  
+      id: user._id.toString(),
       email: user.email
     };
 
@@ -70,7 +90,16 @@ const loginController = async (req, res) => {
       secure: true,
     });
 
-    res.json({ message: "Login successful" });
+    res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        token
+      },
+    });
   } catch (err) {
     console.error(" Login error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -96,10 +125,10 @@ const logoutController = (req, res) => {
 
 const updateUserController = async (req, res) => {
   try {
-  
+
     const user = await userModel.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    
+
     user.email = req.body.email || user.email;
     user.profile_pic = req.body.profile_pic || user.profile_pic;
     user.gender = req.body.gender || user.gender;
@@ -187,12 +216,14 @@ const getUserActivityController = async (req, res) => {
 
 
 
-module.exports={registerController,
+module.exports = {
+  registerController,
   loginController,
   logoutController,
   updateUserController,
   deleteUserController,
-deleteAnyUserController,
+  deleteAnyUserController,
   getAllUsersController,
   getUserByIdController,
-  getUserActivityController,}
+  getUserActivityController,
+}
