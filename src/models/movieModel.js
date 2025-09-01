@@ -28,18 +28,20 @@ const movieSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-            director: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'director',
-    },
-    actors: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'actor',
-    }],
-    language: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'language',
-    },
+        director: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'director',
+        },
+        rating: { type: Number, default: 0 },  
+        isPremium: { type: Boolean, default: false },
+        actors: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'actor',
+        }],
+        language: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'language',
+        },
 
     },
     {

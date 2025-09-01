@@ -1,5 +1,6 @@
 // controllers/movieController.js
 const Movie = require('../models/movieModel');
+const Review = require('../models/reviewModel');
 
 const getMovies = async (req, res) => {
   const movies = await Movie.find({});
@@ -7,52 +8,102 @@ const getMovies = async (req, res) => {
 };
 
 const getMovieById = async (req, res) => {
-  const movie = await Movie.findById(req.params.id);
-  if (movie) {
-    res.json(movie);
-  } else {
-    res.status(404).json({ message: 'Movie not found' });
+  try {
+    const movie = await Movie.findById(req.params.id)
+      .populate("director", "name")
+      .populate("actors", "name")
+      .populate("language", "name");
+
+    if (!movie) {
+      return res.status(404).json({ message: "Movie not found" });
+    }
+
+    // fetch reviews for this movie
+    const reviews = await Review.find({ movie_id: movie._id })
+      .populate("user_id", "name");
+
+    res.json({
+      ...movie.toObject(),
+      reviews,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching movie", error: error.message });
   }
 };
 
+module.exports = {
+  getMovieById,
+  // other functions (getMovies, createMovie, updateMovie, deleteMovie...)
+};
+
+
 const createMovie = async (req, res) => {
   try {
-const { title, description, image, release_date,director,actors,language } = req.body;
-  const movie = new Movie({
-    title,
-    description,
-    image,
-    release_date,
-    director,
-    actors,
-    language,
-    createdBy: req.user._id
-  });
+    const { title, description, release_date, director, actors, language, rating, isPremium } = req.body;
 
-  const createdMovie = await movie.save();
-  res.status(201).json(createdMovie);
+    // Get the image URL from Cloudinary (uploaded by multer)
+    const image = req.file ? req.file.path : null;
+
+    const movie = new Movie({
+      title,
+      description,
+      release_date,
+      director,
+      actors,
+      language,
+      rating,
+      isPremium,
+      image,
+      createdBy: req.user ? req.user._id : null, // optional if you have auth
+    });
+
+    const createdMovie = await movie.save();
+    res.status(201).json(createdMovie);
   } catch (error) {
-     res.status(500).json({
+    console.error('Error creating movie:', error);
+    res.status(500).json({
       message: 'Failed to create movie',
-      error: error.message
+      error: error.message,
     });
   }
 };
 
+
 const updateMovie = async (req, res) => {
-  const movie = await Movie.findById(req.params.id);
-  if (movie) {
+  try {
+    const movie = await Movie.findById(req.params.id);
+    if (!movie) return res.status(404).json({ message: 'Movie not found' });
+
     movie.title = req.body.title || movie.title;
     movie.description = req.body.description || movie.description;
-    movie.image = req.body.image || movie.image;
-    movie.release_date = req.body.release_Date || movie.release_date;
+    movie.release_date = req.body.release_date || movie.release_date;
+    movie.rating = req.body.rating ?? movie.rating;
+    movie.isPremium = req.body.isPremium ?? movie.isPremium;
+    movie.director = req.body.director || movie.director;
+    movie.language = req.body.language || movie.language;
+
+    // Handle actors array
+    if (req.body['actors[]'] || req.body.actors) {
+      let actors = req.body['actors[]'] || req.body.actors;
+      if (!Array.isArray(actors)) actors = [actors]; 
+      movie.actors = actors;
+    }
+
+    // Only update image if a new file is uploaded
+    if (req.file) {
+      movie.image = req.file.path; 
+    }
 
     const updatedMovie = await movie.save();
     res.json(updatedMovie);
-  } else {
-    res.status(404).json({ message: 'Movie not found' });
+  } catch (error) {
+    console.error('Error updating movie:', error);
+    res.status(500).json({ message: 'Failed to update movie', error: error.message });
   }
 };
+
 
 const deleteMovie = async (req, res) => {
   const movie = await Movie.findById(req.params.id);
