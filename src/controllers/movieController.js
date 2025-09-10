@@ -41,8 +41,15 @@ module.exports = {
 
 const createMovie = async (req, res) => {
   try {
-    const { title, description, release_date, director, actors, language, rating, isPremium } = req.body;
+    let { title, description, release_date, director, actors, language, rating, isPremium } = req.body;
 
+     if (actors) {
+      if (!Array.isArray(actors)) {
+        actors = [actors]; // convert single value to array
+      }
+    } else {
+      actors = [];
+    }
     // Get the image URL from Cloudinary (uploaded by multer)
     const image = req.file ? req.file.path : null;
 
@@ -85,11 +92,12 @@ const updateMovie = async (req, res) => {
     movie.language = req.body.language || movie.language;
 
     // Handle actors array
-    if (req.body['actors[]'] || req.body.actors) {
-      let actors = req.body['actors[]'] || req.body.actors;
-      if (!Array.isArray(actors)) actors = [actors]; 
-      movie.actors = actors;
-    }
+ if (req.body.actors) {
+  let actors = req.body.actors;
+  if (!Array.isArray(actors)) actors = [actors];
+  movie.actors = actors;
+}
+
 
     // Only update image if a new file is uploaded
     if (req.file) {
