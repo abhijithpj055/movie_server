@@ -30,8 +30,9 @@ exports.createReview = async (req, res) => {
       comment
     });
 
-    const savedReview = await newReview.save();
-    res.status(201).json(savedReview);
+   let savedReview = await newReview.save();
+ savedReview = await savedReview.populate("user_id", "name");
+ res.status(201).json(savedReview);
   } catch (err) {
     res.status(500).json({ message: 'Failed to create review', error: err.message });
   }
@@ -52,7 +53,8 @@ exports.updateReview = async (req, res) => {
     reviews.rating = rating ?? reviews.rating;
     reviews.comment = comment ?? reviews.comment;
 
-    const updated = await reviews.save();
+    let updated = await reviews.save();
+    updated = await updated.populate("user_id", "name");
     res.status(200).json(updated);
   } catch (err) {
     res.status(500).json({ message: 'Failed to update review', error: err.message });
