@@ -36,7 +36,7 @@ app.use(cors({
 app.use(cookieParser())
 app.use(express.json())
 
-app.get("/",(req,res)=>{
+app.get("/api",(req,res)=>{
     res.send("<h1>movies</h1>")
 })
 
