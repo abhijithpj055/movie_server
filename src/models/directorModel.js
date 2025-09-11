@@ -3,7 +3,7 @@ const mongoose =require('mongoose')
 const directorSchema=new mongoose.Schema({
     name:{
         type:String,
-        reqired:true,
+        required:true,
         trim:true,
     }
 })
