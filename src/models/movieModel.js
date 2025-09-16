@@ -11,7 +11,7 @@ const movieSchema = new mongoose.Schema({
   rating: { type: Number, default: 0 },
   isPremium: { type: Boolean, default: false },
   image: { type: String, default: null },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: false },
 }, { timestamps: true });
 
 
