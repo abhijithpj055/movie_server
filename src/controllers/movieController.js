@@ -1,7 +1,19 @@
-const mongoose = require('mongoose');
-
 const Movie = require('../models/movieModel');
-const Review = require('../models/reviewModel');
+const cloudinary = require('../config/cloudinary');
+
+// ----------------- Helper to handle actors safely -----------------
+const parseActors = (actors) => {
+  if (!actors) return [];
+  if (Array.isArray(actors)) return actors;
+  if (typeof actors === 'string') {
+    try {
+      return JSON.parse(actors); // if frontend sent JSON string
+    } catch {
+      return [actors]; // single string id
+    }
+  }
+  return [];
+};
 
 // ----------------- GET ALL -----------------
 const getMovies = async (req, res) => {
@@ -12,7 +24,7 @@ const getMovies = async (req, res) => {
       .populate('language', 'name');
     res.json(movies);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch movies', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -23,93 +35,69 @@ const getMovieById = async (req, res) => {
       .populate('director', 'name')
       .populate('actors', 'name')
       .populate('language', 'name');
-
-    if (!movie) return res.status(404).json({ message: 'Movie not found' });
-
-    const reviews = await Review.find({ movie_id: movie._id }).populate('user_id', 'name');
-
-    res.json({ ...movie.toObject(), reviews });
+    if (movie) {
+      res.json(movie);
+    } else {
+      res.status(404).json({ message: 'Movie not found' });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching movie', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
 // ----------------- CREATE -----------------
 const createMovie = async (req, res) => {
   try {
-    console.log("Incoming movie request:");
+        console.log("Incoming movie request:", req.body);
+
+    const {
+      title,
+      description,
+      release_date,
+      director,
+      actors,
+      language,
+      rating,
+      isPremium,
+    } = req.body;
+
+    console.log("📥 Incoming Create Movie Request");
     console.log("Body:", req.body);
     console.log("File:", req.file);
     console.log("User:", req.user?._id);
 
-    const { title, description, release_date, director, actors, language, rating, isPremium } = req.body;
-
-    // ✅ Basic validation
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: "Unauthorized: no user info" });
-    }
-    if (!title || !description || !release_date) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    // ✅ Build initial movie data
     const movieData = {
       title,
       description,
-      release_date: new Date(release_date),
-      rating: rating ? Number(rating) : 0,
-      isPremium: isPremium === 'true' || isPremium === true,
-      image: req.file ? req.file.path : null,
-      createdBy: req.user._id,
+      release_date,
+      director,
+      actors: parseActors(actors),
+      language,
+      rating,
+      isPremium: String(isPremium) === 'true',
+      createdBy: req.user?._id,
     };
 
-    // ✅ Parse and validate actors
-    try {
-      movieData.actors = typeof actors === 'string'
-        ? JSON.parse(actors)
-        : Array.isArray(actors)
-        ? actors
-        : [];
-
-      movieData.actors = movieData.actors.filter((id) =>
-        mongoose.Types.ObjectId.isValid(id)
-      );
-    } catch (err) {
-      return res.status(400).json({ message: 'Invalid actors format' });
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'movies',
+      });
+      movieData.image = result.secure_url;
     }
 
-    // ✅ Validate and assign director
-    if (director && mongoose.Types.ObjectId.isValid(director)) {
-      movieData.director = director;
-    } else if (director) {
-      return res.status(400).json({ message: 'Invalid director ID' });
-    }
-
-    // ✅ Validate and assign language
-    if (language && mongoose.Types.ObjectId.isValid(language)) {
-      movieData.language = language;
-    } else if (language) {
-      return res.status(400).json({ message: 'Invalid language ID' });
-    }
-
-    // ✅ Save to DB
     const movie = new Movie(movieData);
-    const savedMovie = await movie.save();
-
-    res.status(201).json(savedMovie);
-
+    const createdMovie = await movie.save();
+    res.status(201).json(createdMovie);
   } catch (error) {
-    console.error("❌ Error creating movie:", error);
+    console.error("❌ Backend Error:", error);
+
     res.status(500).json({
       message: "Failed to create movie",
       error: error.message,
-      name: error.name,
-      stack: error.stack,
-      errors: error.errors || null,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };
-
 
 // ----------------- UPDATE -----------------
 const updateMovie = async (req, res) => {
@@ -131,23 +119,35 @@ const updateMovie = async (req, res) => {
       ...(release_date && { release_date }),
       ...(director && { director }),
       ...(language && { language }),
-      ...(rating !== undefined && { rating }),
-      ...(isPremium !== undefined && { isPremium }),
-      ...(actors && { actors }),
+      ...(rating && { rating }),
+      ...(isPremium !== undefined && { isPremium: String(isPremium) === 'true' }),
     };
 
-    if (req.file) {
-      updateData.image = req.file.path;
+    if (actors) {
+      updateData.actors = parseActors(actors);
     }
 
-    const updatedMovie = await Movie.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'movies',
+      });
+      updateData.image = result.secure_url;
+    }
 
-    if (!updatedMovie) return res.status(404).json({ message: 'Movie not found' });
+    const updatedMovie = await Movie.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
 
-    res.json(updatedMovie);
+    if (updatedMovie) {
+      res.json(updatedMovie);
+    } else {
+      res.status(404).json({ message: 'Movie not found' });
+    }
   } catch (error) {
-    console.error('Error updating movie:', error);
-    res.status(500).json({ message: 'Failed to update movie', error: error.message });
+    console.error("❌ Error updating movie:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
@@ -155,12 +155,14 @@ const updateMovie = async (req, res) => {
 const deleteMovie = async (req, res) => {
   try {
     const movie = await Movie.findById(req.params.id);
-    if (!movie) return res.status(404).json({ message: 'Movie not found' });
-
-    await Movie.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Movie removed' });
+    if (movie) {
+      await movie.deleteOne();
+      res.json({ message: 'Movie removed' });
+    } else {
+      res.status(404).json({ message: 'Movie not found' });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Failed to delete movie', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
