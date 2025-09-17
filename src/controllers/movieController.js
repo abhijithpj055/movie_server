@@ -48,6 +48,8 @@ const getMovieById = async (req, res) => {
 // ----------------- CREATE -----------------
 const createMovie = async (req, res) => {
   try {
+            console.log("Incoming movie request:", req.data);
+
         console.log("Incoming movie request:", req.body);
 
     const {
@@ -62,6 +64,7 @@ const createMovie = async (req, res) => {
     } = req.body;
 
     console.log("📥 Incoming Create Movie Request");
+
     console.log("Body:", req.body);
     console.log("File:", req.file);
     console.log("User:", req.user?._id);
