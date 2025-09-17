@@ -13,7 +13,7 @@ const { protect, admin } = require('../middlewares/authMiddleware');
 
 router.get('/', getMovies);
 router.get('/:id', getMovieById);
-router.post('/', protect, admin, upload.single('image'), createMovie);
+router.post('/', protect, admin, createMovie);
 router.put('/:id', protect, admin, upload.single('image'), updateMovie);
 router.delete('/:id', protect, admin, deleteMovie); // Admin only
 

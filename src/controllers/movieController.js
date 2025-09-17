@@ -78,12 +78,12 @@ const createMovie = async (req, res) => {
       createdBy: req.user?._id,
     };
 
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'movies',
-      });
-      movieData.image = result.secure_url;
-    }
+    // if (req.file) {
+    //   const result = await cloudinary.uploader.upload(req.file.path, {
+    //     folder: 'movies',
+    //   });
+    //   movieData.image = result.secure_url;
+    // }
 
     const movie = new Movie(movieData);
     const createdMovie = await movie.save();
